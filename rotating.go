@@ -10,9 +10,9 @@ import (
 
 // RotatingPath is a path that rotates the player as well, on top of moving them.
 type RotatingPath struct {
-	points   [][5]float64
-	duration time.Duration
-	interval time.Duration
+	Points   [][5]float64  `json:"points"`
+	Duration time.Duration `json:"duration"`
+	Interval time.Duration `json:"interval"`
 
 	splines [][]float64
 }
@@ -36,9 +36,9 @@ func NewRotatingPath(points [][5]float64, duration, interval time.Duration) *Rot
 		t[i] = step.Seconds() * float64(i)
 	}
 	return &RotatingPath{
-		points:   points,
-		duration: duration,
-		interval: interval,
+		Points:   points,
+		Duration: duration,
+		Interval: interval,
 		splines: [][]float64{
 			gospline.NewCubicSpline(t, x).Range(0, duration.Seconds(), interval.Seconds()),
 			gospline.NewCubicSpline(t, y).Range(0, duration.Seconds(), interval.Seconds()),
@@ -57,7 +57,7 @@ func (p *RotatingPath) at(i int) (mgl32.Vec3, float32, float32) {
 // Move moves the player along the path.
 func (p *RotatingPath) Move(pl *player.Player) {
 	s := player_session(pl)
-	steps := int(p.duration / p.interval)
+	steps := int(p.Duration / p.Interval)
 	for i := 0; i < steps; i++ {
 		pos, yaw, pitch := p.at(i)
 		session_writePacket(s, &packet.MovePlayer{
@@ -69,6 +69,6 @@ func (p *RotatingPath) Move(pl *player.Player) {
 			Mode:            packet.MoveModeTeleport,
 			OnGround:        pl.OnGround(),
 		})
-		time.Sleep(p.interval)
+		time.Sleep(p.Interval)
 	}
 }

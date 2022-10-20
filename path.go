@@ -12,16 +12,22 @@ import (
 )
 
 // Path is a path along which a player can move.
-type Path struct {
-	points   []mgl64.Vec3
-	duration time.Duration
-	interval time.Duration
+type Path interface {
+	at(int) mgl32.Vec3
+	Move(*player.Player)
+}
+
+// NormalPath is a path only concerning x, y and z coordinates.
+type NormalPath struct {
+	Points   []mgl64.Vec3  `json:"points"`
+	Duration time.Duration `json:"duration"`
+	Interval time.Duration `json:"interval"`
 
 	splines [][]float64
 }
 
 // NewPath creates a new path from the given points, with the given duration and interval.
-func NewPath(points []mgl64.Vec3, duration, interval time.Duration) *Path {
+func NewPath(points []mgl64.Vec3, duration, interval time.Duration) *NormalPath {
 	x := make([]float64, len(points))
 	y := make([]float64, len(points))
 	z := make([]float64, len(points))
@@ -33,10 +39,10 @@ func NewPath(points []mgl64.Vec3, duration, interval time.Duration) *Path {
 		z[i] = p.Z()
 		t[i] = step.Seconds() * float64(i)
 	}
-	return &Path{
-		points:   points,
-		duration: duration,
-		interval: interval,
+	return &NormalPath{
+		Points:   points,
+		Duration: duration,
+		Interval: interval,
 		splines: [][]float64{
 			gospline.NewCubicSpline(t, x).Range(0, duration.Seconds(), interval.Seconds()),
 			gospline.NewCubicSpline(t, y).Range(0, duration.Seconds(), interval.Seconds()),
@@ -46,14 +52,14 @@ func NewPath(points []mgl64.Vec3, duration, interval time.Duration) *Path {
 }
 
 // at returns the position at the given time.
-func (p *Path) at(i int) mgl32.Vec3 {
+func (p *NormalPath) at(i int) mgl32.Vec3 {
 	return mgl32.Vec3{float32(p.splines[0][i]), float32(p.splines[1][i]), float32(p.splines[2][i])}
 }
 
 // Move moves the player along the path.
-func (p *Path) Move(pl *player.Player) {
+func (p *NormalPath) Move(pl *player.Player) {
 	s := player_session(pl)
-	steps := int(p.duration / p.interval)
+	steps := int(p.Duration / p.Interval)
 	for i := 0; i < steps; i++ {
 		session_writePacket(s, &packet.MovePlayer{
 			EntityRuntimeID: 1,
@@ -61,7 +67,7 @@ func (p *Path) Move(pl *player.Player) {
 			Mode:            packet.MoveModeNormal,
 			OnGround:        pl.OnGround(),
 		})
-		time.Sleep(p.interval)
+		time.Sleep(p.Interval)
 	}
 }
 
