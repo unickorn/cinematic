@@ -6,35 +6,22 @@ import (
 )
 
 // FromFile loads a new Path from a file.
-func FromFile(path string) *NormalPath {
-	// open file and read json
+func FromFile(path string) Path {
 	f, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
-	// parse json
-	p := NormalPath{}
-	err = json.NewDecoder(f).Decode(&p)
-	if err != nil {
-		return &NormalPath{}
+	var n NormalPath
+	err = json.NewDecoder(f).Decode(&n)
+	if err == nil {
+		return &n
 	}
-	return NewPath(p.Points, p.Duration, p.Interval)
-}
-
-// FromFileRotating loads a new RotatingPath from a file.
-func FromFileRotating(path string) *RotatingPath {
-	// open file and read json
-	f, err := os.Open(path)
-	if err != nil {
-		panic(err)
+	var r RotatingPath
+	err = json.NewDecoder(f).Decode(&r)
+	if err == nil {
+		return &r
 	}
-	// parse json
-	p := RotatingPath{}
-	err = json.NewDecoder(f).Decode(&p)
-	if err != nil {
-		return &RotatingPath{}
-	}
-	return NewRotatingPath(p.Points, p.Duration, p.Interval)
+	return emptyPath
 }
 
 // Write writes the path to file.

@@ -50,8 +50,13 @@ func NewRotatingPath(points [][5]float64, duration, interval time.Duration) *Rot
 }
 
 // at returns the position at the given time.
-func (p *RotatingPath) at(i int) (mgl32.Vec3, float32, float32) {
-	return mgl32.Vec3{float32(p.splines[0][i]), float32(p.splines[1][i]), float32(p.splines[2][i])}, float32(p.splines[3][i]), float32(p.splines[4][i])
+func (p *RotatingPath) at(i int) mgl32.Vec3 {
+	return mgl32.Vec3{float32(p.splines[0][i]), float32(p.splines[1][i]), float32(p.splines[2][i])}
+}
+
+// rotationAt returns the rotation at the given time.
+func (p *RotatingPath) rotationAt(i int) (float32, float32) {
+	return float32(p.splines[3][i]), float32(p.splines[4][i])
 }
 
 // Move moves the player along the path.
@@ -59,10 +64,10 @@ func (p *RotatingPath) Move(pl *player.Player) {
 	s := player_session(pl)
 	steps := int(p.Duration / p.Interval)
 	for i := 0; i < steps; i++ {
-		pos, yaw, pitch := p.at(i)
+		yaw, pitch := p.rotationAt(i)
 		session_writePacket(s, &packet.MovePlayer{
 			EntityRuntimeID: 1,
-			Position:        pos,
+			Position:        p.at(i),
 			Pitch:           pitch,
 			Yaw:             yaw,
 			HeadYaw:         yaw,

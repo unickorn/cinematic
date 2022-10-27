@@ -30,5 +30,5 @@ cinematic.Write(path, "path.json")
 cinematic.Write(rpath, "rotating_path.json")
 
 normal := cinematic.FromFile("path.json")
-rotating := cinematic.FromFileRotating("rotating_path.json")
+rotating := cinematic.FromFile("rotating_path.json")
 ```

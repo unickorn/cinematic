@@ -17,6 +17,8 @@ type Path interface {
 	Move(*player.Player)
 }
 
+var emptyPath = &NormalPath{}
+
 // NormalPath is a path only concerning x, y and z coordinates.
 type NormalPath struct {
 	Points   []mgl64.Vec3  `json:"points"`
