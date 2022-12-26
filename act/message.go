@@ -21,8 +21,9 @@ func (m Message) Type() string {
 }
 
 // Do ...
-func (m Message) Do(p *player.Player) {
+func (m Message) Do(p *player.Player, complete chan bool) {
 	p.Message(m.Message)
+	complete <- true
 }
 
 // MarshalJSON ...

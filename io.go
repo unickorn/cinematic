@@ -2,10 +2,10 @@ package cinematic
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/unickorn/cinematic/act"
 	"io"
 	"os"
-	"strconv"
 )
 
 // Read reads a scene from an io.Reader.
@@ -15,10 +15,15 @@ func Read(reader io.Reader) (Scene, error) {
 	if err != nil {
 		return emptyScene, err
 	}
-	actions := make(map[int]act.Act)
-	for k, v := range s["actions"].(map[string]interface{}) {
-		i, _ := strconv.Atoi(k)
-		actions[i] = act.New(v.(map[string]interface{})["type"].(string)).FromMap(v.(map[string]interface{}))
+	l := s["actions"].([]interface{})
+	actions := make([]act.Act, len(l))
+	for k, v := range l {
+		a := v.(map[string]interface{})
+		ac, ok := act.New(a["type"].(string)).(act.WritableAct)
+		if !ok {
+			return emptyScene, fmt.Errorf("scene contains non-writable action %T", ac)
+		}
+		actions[k] = ac.FromMap(a)
 		if err != nil {
 			return emptyScene, err
 		}
@@ -26,7 +31,7 @@ func Read(reader io.Reader) (Scene, error) {
 	return NewScene(s["name"].(string)).WithActions(actions), nil
 }
 
-// ReadFile loads a new Path from a file.
+// ReadFile loads a new Scene from a file.
 func ReadFile(path string) (Scene, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -37,6 +42,9 @@ func ReadFile(path string) (Scene, error) {
 
 // Write writes the path to an io.Writer.
 func Write(scene Scene, writer io.Writer) error {
+	if !checkWritable(scene) {
+		return fmt.Errorf("scene %T contains non-writable actions", scene)
+	}
 	return json.NewEncoder(writer).Encode(scene)
 }
 
@@ -47,4 +55,15 @@ func WriteFile(scene Scene, file string) error {
 		return err
 	}
 	return Write(scene, f)
+}
+
+// checkWritable checks if a scene can be written to disk. If none of the actions in the scene contain
+// any callables (like in Forms, Dialogs) then all actions can be json serialized and the scene is considered writable.
+func checkWritable(scene Scene) bool {
+	for _, a := range scene.Actions {
+		if _, ok := a.(act.WritableAct); !ok {
+			return false
+		}
+	}
+	return true
 }

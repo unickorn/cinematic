@@ -11,20 +11,22 @@ import (
 
 // RotatingPath is a path that rotates the player as well, on top of moving them.
 type RotatingPath struct {
-	Points   [][5]float64  `json:"points"`
-	Duration time.Duration `json:"duration"`
-	Interval time.Duration `json:"interval"`
+	Points            [][5]float64  `json:"points"`
+	Duration          time.Duration `json:"duration"`
+	Interval          time.Duration `json:"interval"`
+	WaitUntilFinished bool          `json:"wait_until_finished"`
 
 	splines [][]float64
 }
 
 // NewRotatingPath creates a new rotating path from the given points. The points are given as a slice of
 // 5-arrays, where the first 3 values are the x, y and z coordinates, and the last 2 values are the yaw and the pitch.
-func NewRotatingPath(points [][5]float64, duration, interval time.Duration) RotatingPath {
+func NewRotatingPath(points [][5]float64, duration, interval time.Duration, waitUntilFinished bool) RotatingPath {
 	return RotatingPath{
-		Points:   points,
-		Duration: duration,
-		Interval: interval,
+		Points:            points,
+		Duration:          duration,
+		Interval:          interval,
+		WaitUntilFinished: waitUntilFinished,
 	}.initialize()
 }
 
@@ -83,22 +85,30 @@ func (p RotatingPath) MarshalJSON() ([]byte, error) {
 }
 
 // Do moves the player along the path.
-func (p RotatingPath) Do(pl *player.Player) {
+func (p RotatingPath) Do(pl *player.Player, complete chan bool) {
 	s := player_session(pl)
 	steps := int(p.Duration / p.Interval)
-	for i := 0; i < steps; i++ {
-		yaw, pitch := p.rotationAt(i)
-		session_writePacket(s, &packet.MovePlayer{
-			EntityRuntimeID: 1,
-			Position:        p.at(i),
-			Pitch:           pitch,
-			Yaw:             yaw,
-			HeadYaw:         yaw,
-			Mode:            packet.MoveModeTeleport,
-			OnGround:        pl.OnGround(),
-		})
-		time.Sleep(p.Interval)
+	do := func() {
+		for i := 0; i < steps; i++ {
+			yaw, pitch := p.rotationAt(i)
+			session_writePacket(s, &packet.MovePlayer{
+				EntityRuntimeID: 1,
+				Position:        p.at(i),
+				Pitch:           pitch,
+				Yaw:             yaw,
+				HeadYaw:         yaw,
+				Mode:            packet.MoveModeTeleport,
+				OnGround:        pl.OnGround(),
+			})
+			time.Sleep(p.Interval)
+		}
 	}
+	if p.WaitUntilFinished {
+		do()
+	} else {
+		go do()
+	}
+	complete <- true
 }
 
 // FromMap ...

@@ -21,19 +21,21 @@ type Path interface {
 
 // NormalPath is a path only concerning x, y and z coordinates.
 type NormalPath struct {
-	Points   []mgl64.Vec3  `json:"points"`
-	Duration time.Duration `json:"duration"`
-	Interval time.Duration `json:"interval"`
+	Points            []mgl64.Vec3  `json:"points"`
+	Duration          time.Duration `json:"duration"`
+	Interval          time.Duration `json:"interval"`
+	WaitUntilFinished bool          `json:"wait_until_finished"`
 
 	splines [][]float64
 }
 
 // NewPath creates a new path from the given points, with the given duration and interval.
-func NewPath(points []mgl64.Vec3, duration, interval time.Duration) NormalPath {
+func NewPath(points []mgl64.Vec3, duration, interval time.Duration, waitUntilFinished bool) NormalPath {
 	return NormalPath{
-		Points:   points,
-		Duration: duration,
-		Interval: interval,
+		Points:            points,
+		Duration:          duration,
+		Interval:          interval,
+		WaitUntilFinished: waitUntilFinished,
 	}.initialize()
 }
 
@@ -69,18 +71,26 @@ func (p NormalPath) Type() string {
 }
 
 // Do moves the player along the path.
-func (p NormalPath) Do(pl *player.Player) {
+func (p NormalPath) Do(pl *player.Player, complete chan bool) {
 	s := player_session(pl)
 	steps := int(p.Duration / p.Interval)
-	for i := 0; i < steps; i++ {
-		session_writePacket(s, &packet.MovePlayer{
-			EntityRuntimeID: 1,
-			Position:        p.at(i),
-			Mode:            packet.MoveModeNormal,
-			OnGround:        pl.OnGround(),
-		})
-		time.Sleep(p.Interval)
+	do := func() {
+		for i := 0; i < steps; i++ {
+			session_writePacket(s, &packet.MovePlayer{
+				EntityRuntimeID: 1,
+				Position:        p.at(i),
+				Mode:            packet.MoveModeNormal,
+				OnGround:        pl.OnGround(),
+			})
+			time.Sleep(p.Interval)
+		}
 	}
+	if p.WaitUntilFinished {
+		do()
+	} else {
+		go do()
+	}
+	complete <- true
 }
 
 // MarshalJSON ...

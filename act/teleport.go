@@ -1,6 +1,7 @@
 package act
 
 import (
+	"encoding/json"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -22,12 +23,13 @@ func (t Teleport) Type() string {
 }
 
 // Do ...
-func (t Teleport) Do(p *player.Player) {
+func (t Teleport) Do(p *player.Player, complete chan bool) {
 	p.Teleport(t.Pos)
-	yaw, pitch := p.Rotation()
-	deltaYaw := t.Rot[0] - yaw
-	deltaPitch := t.Rot[1] - pitch
+	rot := p.Rotation()
+	deltaYaw := t.Rot[0] - rot.Yaw()
+	deltaPitch := t.Rot[1] - rot.Pitch()
 	p.Move(mgl64.Vec3{0, 0, 0}, deltaYaw, deltaPitch)
+	complete <- true
 }
 
 // FromMap ...
@@ -35,4 +37,16 @@ func (t Teleport) FromMap(a map[string]interface{}) Act {
 	t.Pos = mgl64.Vec3{a["position"].([]interface{})[0].(float64), a["position"].([]interface{})[1].(float64), a["position"].([]interface{})[2].(float64)}
 	t.Rot = [2]float64{a["rotation"].([]interface{})[0].(float64), a["rotation"].([]interface{})[1].(float64)}
 	return t
+}
+
+// MarshalJSON ...
+func (t Teleport) MarshalJSON() ([]byte, error) {
+	type a Teleport
+	return json.Marshal(struct {
+		a
+		Type string `json:"type"`
+	}{
+		a:    a(t),
+		Type: t.Type(),
+	})
 }
